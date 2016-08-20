@@ -1,10 +1,10 @@
 package kmeans
 
-import scala.annotation.tailrec
-import scala.collection._
-import scala.util.Random
 import org.scalameter._
-import common._
+
+import scala.annotation.tailrec
+import scala.collection.{IndexedSeq, _}
+import scala.util.Random
 
 class KMeans {
 
@@ -27,7 +27,7 @@ class KMeans {
   }
 
   def findClosest(p: Point, means: GenSeq[Point]): Point = {
-    assert(means.size > 0)
+    assert(means.nonEmpty)
     var minDistance = p.squareDistance(means(0))
     var closest = means(0)
     var i = 1
@@ -47,7 +47,8 @@ class KMeans {
     allMeans ++ points.groupBy(p => findClosest(p, means))
   }
 
-  def findAverage(oldMean: Point, points: GenSeq[Point]): Point = if (points.length == 0) oldMean else {
+  def findAverage(oldMean: Point, points: GenSeq[Point]): Point = if (points.isEmpty) oldMean
+  else {
     var x = 0.0
     var y = 0.0
     var z = 0.0
@@ -60,29 +61,42 @@ class KMeans {
   }
 
   def update(classified: GenMap[Point, GenSeq[Point]], oldMeans: GenSeq[Point]): GenSeq[Point] = {
-    ???
+    oldMeans.map(o => findAverage(o, classified(o)))
+  }
+
+  private def sqrDistance(a: Point, b: Point) = {
+    Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2) + Math.pow(a.z - b.z, 2))
   }
 
   def converged(eta: Double)(oldMeans: GenSeq[Point], newMeans: GenSeq[Point]): Boolean = {
-    ???
+    0 until oldMeans.length forall (i => sqrDistance(oldMeans(i), newMeans(i)) <= eta)
   }
 
   @tailrec
   final def kMeans(points: GenSeq[Point], means: GenSeq[Point], eta: Double): GenSeq[Point] = {
-    if (???) kMeans(???, ???, ???) else ??? // your implementation need to be tail recursive
+    val meanToPoints = classify(points, means)
+    val newMeans = update(meanToPoints, means)
+
+    if (converged(eta)(means, newMeans))
+      newMeans
+    else
+      kMeans(points, newMeans, eta)
   }
 }
 
 /** Describes one point in three-dimensional space.
- *
- *  Note: deliberately uses reference equality.
- */
+  *
+  * Note: deliberately uses reference equality.
+  */
 class Point(val x: Double, val y: Double, val z: Double) {
   private def square(v: Double): Double = v * v
+
   def squareDistance(that: Point): Double = {
-    square(that.x - x)  + square(that.y - y) + square(that.z - z)
+    square(that.x - x) + square(that.y - y) + square(that.z - z)
   }
+
   private def round(v: Double): Double = (v * 100).toInt / 100.0
+
   override def toString = s"(${round(x)}, ${round(y)}, ${round(z)})"
 }
 
@@ -94,7 +108,7 @@ object KMeansRunner {
     Key.exec.maxWarmupRuns -> 40,
     Key.exec.benchRuns -> 25,
     Key.verbose -> true
-  ) withWarmer(new Warmer.Default)
+  ) withWarmer (new Warmer.Default)
 
   def main(args: Array[String]) {
     val kMeans = new KMeans()
